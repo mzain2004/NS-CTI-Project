@@ -31,7 +31,8 @@
         "../packages/shared/types/index.ts"
       ],
       "@shared/*": [
-        "../packages/shared/*"
+        "../packages/shared/*",
+        "packages/shared/*"
       ]
     }
   },
