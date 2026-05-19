@@ -1,0 +1,8 @@
+backend/.env
+frontend/.env.local
+frontend/.env.production
+node_modules/
+pycache/
+.next/
+*.pyc
+.DS_Store

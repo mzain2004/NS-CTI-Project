@@ -1,0 +1,80 @@
+version: '3.9'
+
+services:
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: nscti-backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - samples_data:/tmp/samples
+      - reports_data:/tmp/reports
+      - cowrie_logs:/var/log/cowrie:ro
+      - cowrie_downloads:/var/log/cowrie/downloads:ro
+    env_file:
+      - ./backend/.env
+    restart: unless-stopped
+    networks:
+      - nscti
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: http://165.232.174.172:8000
+    container_name: nscti-frontend
+    expose:
+      - "3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - nscti
+
+  nginx:
+    image: nginx:alpine
+    container_name: nscti-nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - frontend
+      - backend
+    restart: unless-stopped
+    networks:
+      - nscti
+
+  cowrie:
+    image: cowrie/cowrie:latest
+    container_name: nscti-cowrie
+    ports:
+      - "2222:2222"
+      - "2223:2223"
+    volumes:
+      - cowrie_logs:/cowrie/var/log/cowrie
+      - cowrie_downloads:/cowrie/var/lib/cowrie/downloads
+    restart: unless-stopped
+    networks:
+      - nscti
+
+volumes:
+  samples_data:
+  reports_data:
+  cowrie_logs:
+  cowrie_downloads:
+
+networks:
+  nscti:
+    driver: bridge

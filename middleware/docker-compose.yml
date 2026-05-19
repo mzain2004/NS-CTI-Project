@@ -1,0 +1,10 @@
+services:
+  middleware:
+    build: .
+    container_name: autoshield-middleware
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      - VT_API_KEY=YOUR_VT_API_KEY
+      - DISCORD_WEBHOOK_URL=YOUR_DISCORD_WEBHOOK_URL

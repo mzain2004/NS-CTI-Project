@@ -1,0 +1,25 @@
+<ossec_config>
+  <!-- Integration to send alerts to AutoShield Middleware -->
+  <integration>
+    <name>autoshield-middleware</name>
+    <hook_url>http://165.232.174.172:8000/webhook</hook_url>
+    <alert_format>json</alert_format>
+    <level>7</level> <!-- Send alerts with level 7 or higher -->
+    <!-- You can also filter by rule_id if preferred -->
+  </integration>
+
+  <!-- Active Response Command Definition -->
+  <command>
+    <name>autoshield-block</name>
+    <executable>block-ip.sh</executable>
+    <timeout_allowed>yes</timeout_allowed>
+  </command>
+
+  <!-- Active Response Execution Policy -->
+  <active-response>
+    <command>autoshield-block</command>
+    <location>local</location>
+    <level>10</level> <!-- Block IPs for alerts level 10+ or specific rules -->
+    <timeout>86400</timeout> <!-- 24 hours in seconds -->
+  </active-response>
+</ossec_config>

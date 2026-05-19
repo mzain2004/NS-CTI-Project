@@ -1,0 +1,46 @@
+<h2>Agent Activity Console: Visual Style</h2>
+<p class="subtitle">Pick the terminal aesthetic that best fits the AutoShield SOC dashboard</p>
+
+<div class="options">
+  <div class="option" data-choice="retro" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Retro Cyber (Green)</h3>
+      <p>Classic "Matrix" green text on black. High contrast, high visibility, feels very "hacky".</p>
+      <div class="mockup" style="background: #000; padding: 10px; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #00ff00; border: 1px solid #00ff00; margin-top: 10px;">
+        [08:42:12] Agent: Halo_Enforcer initialized.<br/>
+        [08:42:13] Analyzing threat: 192.168.1.45...<br/>
+        [08:42:15] Correlation complete: 85% match with Mirai botnet patterns.<br/>
+        [08:42:16] Action: Blocking IP across all nodes.
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="modern" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Modern Dark (Monochromatic)</h3>
+      <p>White/Grey text with syntax highlighting (Cyan/Purple). Clean, professional, fits the modern SaaS aesthetic.</p>
+      <div class="mockup" style="background: #0a0a0f; padding: 10px; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #d1d1d1; border: 1px solid #ffffff1a; margin-top: 10px;">
+        <span style="color: #666;">[08:42:12]</span> <span style="color: #7c6af7;">AGENT</span> Halo_Enforcer <span style="color: #00d4aa;">READY</span><br/>
+        <span style="color: #666;">[08:42:13]</span> <span style="color: #7c6af7;">SCAN</span> 192.168.1.45<br/>
+        <span style="color: #666;">[08:42:15]</span> <span style="color: #f5a623;">MATCH</span> Mirai_Botnet (Score: 0.85)<br/>
+        <span style="color: #666;">[08:42:16]</span> <span style="color: #ff4d4f;">BLOCK</span> Command dispatched
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="glass" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Glassmorphism Console</h3>
+      <p>Translucent background with blurred effect. Matches your current UI style (Glass class).</p>
+      <div class="mockup" style="background: rgba(255,255,255,0.05); backdrop-filter: blur(10px); padding: 10px; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #fff; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; margin-top: 10px;">
+        <span style="color: #7c6af7;">[INFO]</span> Agent Scope: Task started<br/>
+        <span style="color: #00d4aa;">[ENRICH]</span> VirusTotal: 12/70 engines detected<br/>
+        <span style="color: #f5a623;">[WARN]</span> Anomalous JA3 detected: 771,4866...<br/>
+        <span style="color: #ff4d4f;">[ACTION]</span> Autonomous Isolation Triggered
+      </div>
+    </div>
+  </div>
+</div>
