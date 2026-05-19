@@ -10,7 +10,7 @@ import type {
   WazuhAlert,
 } from '@shared/types'
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://165.232.174.172:8000'
+export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://165.232.174.172:8000'
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_URL}${path}`, {

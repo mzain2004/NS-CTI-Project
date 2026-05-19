@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import ExportButtons from '@/components/reports/ExportButtons';
 import ReportCard from '@/components/reports/ReportCard';
 import type { ReportMetadata } from '@shared/types';
+import { API_URL } from '@/lib/api'
 
 export default function ReportsPage() {
   const [reports, setReports] = useState<ReportMetadata[]>([]);
@@ -10,7 +11,7 @@ export default function ReportsPage() {
   useEffect(() => {
     const fetchReports = async () => {
       try {
-        const response = await fetch('/api/report/list');
+        const response = await fetch(`${API_URL}/api/report/list`);
         const data = await response.json();
         setReports(data);
       } catch (error) {
@@ -25,7 +26,7 @@ export default function ReportsPage() {
 
   const handleGenerateReport = async (analysisId: string) => {
     try {
-      const response = await fetch('/api/report/generate', {
+      const response = await fetch(`${API_URL}/api/report/generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ analysis_id: analysisId }),

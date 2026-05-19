@@ -2,6 +2,7 @@
 import Link from 'next/link';
 import { LayoutDashboard, Upload, Bug, Shield, Network, FileText } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { API_URL } from '@/lib/api'
 
 const navItems = [
   { name: 'Dashboard', icon: LayoutDashboard, href: '/' },
@@ -17,7 +18,7 @@ export default function Sidebar() {
   useEffect(() => {
     const checkApiStatus = async () => {
       try {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/health`);
+        const response = await fetch(`${API_URL}/api/health`);
         setApiStatus(response.ok ? 'Online' : 'Offline');
       } catch {
         setApiStatus('Offline');
