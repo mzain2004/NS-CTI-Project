@@ -3,7 +3,7 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 
 COPY package.json pnpm-lock.yaml* package-lock.json* yarn.lock* ./
-RUN npm install -g pnpm && pnpm install --frozen-lockfile
+RUN npm install --legacy-peer-deps
 
 COPY . .
 
