@@ -6,7 +6,13 @@ import os
 import uuid
 from pathlib import Path
 from jinja2 import Template
-from weasyprint import HTML
+
+try:
+    from weasyprint import HTML
+    WEASYPRINT_AVAILABLE = True
+except ImportError:
+    HTML = None
+    WEASYPRINT_AVAILABLE = False
 
 REPORTS_OUTPUT_PATH = Path("/tmp/reports")
 REPORTS_OUTPUT_PATH.mkdir(parents=True, exist_ok=True)
@@ -111,9 +117,10 @@ async def generate_report(analysis_id: str, analyst_name: str = "Auto-Generated"
         analyst=analyst_name,
     )
 
-    # Save PDF
+    # Save PDF when WeasyPrint is available.
     pdf_path = REPORTS_OUTPUT_PATH / f"{report_id}.pdf"
-    HTML(string=html_content).write_pdf(pdf_path)
+    if WEASYPRINT_AVAILABLE:
+        HTML(string=html_content).write_pdf(pdf_path)
 
     # Save JSON
     json_path = REPORTS_OUTPUT_PATH / f"{report_id}.json"
@@ -122,7 +129,7 @@ async def generate_report(analysis_id: str, analyst_name: str = "Auto-Generated"
 
     return {
         "report_id": report_id,
-        "pdf_path": str(pdf_path),
+        "pdf_path": str(pdf_path) if WEASYPRINT_AVAILABLE else None,
         "json_path": str(json_path),
         "ioc_path": str(ioc_path),
     }

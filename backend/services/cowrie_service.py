@@ -7,7 +7,13 @@ import os
 import json
 import hashlib
 from pathlib import Path
-from geoip import geolite2
+
+try:
+    from geoip import geolite2
+    GEOIP_AVAILABLE = True
+except ImportError:
+    geolite2 = None
+    GEOIP_AVAILABLE = False
 
 COWRIE_DOWNLOADS_PATH = Path("/tmp/cowrie_downloads")
 
@@ -73,7 +79,7 @@ def parse_cowrie_logs(log_path: str = None, limit: int = 100) -> list[dict]:
                     elif event.get("eventid") == "cowrie.login.success":
                         session["login_success"] = True
 
-                    if not session["country"] and session["src_ip"]:
+                    if GEOIP_AVAILABLE and not session["country"] and session["src_ip"]:
                         match = geolite2.lookup(session["src_ip"])
                         session["country"] = match.country if match else None
 

@@ -13,7 +13,7 @@ async def get_virustotal(file_hash: str):
     try:
         return get_virustotal_result(file_hash)
     except Exception as exc:
-        return JSONResponse(status_code=500, content={'error': f'virustotal_failed: {exc}'])
+        return JSONResponse(status_code=500, content={'error': f'virustotal_failed: {exc}'})
 
 
 @router.get("/api/virustotal/{hash}", response_model=dict)

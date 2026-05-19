@@ -7,10 +7,22 @@ import hashlib
 import re
 import subprocess
 from typing import List, Dict
-import yara
-import pefile
 from datetime import datetime
 import json
+
+try:
+    import yara
+    YARA_AVAILABLE = True
+except ImportError:
+    yara = None
+    YARA_AVAILABLE = False
+
+try:
+    import pefile
+    PEFILE_AVAILABLE = True
+except ImportError:
+    pefile = None
+    PEFILE_AVAILABLE = False
 
 # Constants
 SUSPICIOUS_APIS = [
@@ -45,6 +57,8 @@ def identify_file_type(file_path: Path) -> str:
 
 # Function 3: Analyze PE
 def analyze_pe(file_path: Path) -> dict:
+    if not PEFILE_AVAILABLE:
+        return {'error': 'pefile_not_available'}
     try:
         pe = pefile.PE(str(file_path))
         analysis = {
@@ -113,6 +127,8 @@ def extract_strings(file_path: Path, min_length: int = 4) -> List[str]:
 
 # Function 5: Run YARA
 def run_yara(file_path: Path) -> List[Dict]:
+    if not YARA_AVAILABLE:
+        return []
     rules_dir = Path('backend/yara_rules')
     if not rules_dir.exists():
         return []
