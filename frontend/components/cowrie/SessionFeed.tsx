@@ -1,3 +1,4 @@
+"use client"
 import type { CowrieSession } from '@shared/types'
 
 interface SessionFeedProps {
@@ -12,7 +13,7 @@ export default function SessionFeed({ sessions }: SessionFeedProps) {
         {sessions.map((session) => (
           <article key={session.session_id} className="rounded-md border border-(--surface-border) p-2 text-sm">
             <p className="font-mono">{session.src_ip}:{session.src_port}</p>
-            <p className="text-muted">{session.protocol.toUpperCase()} -> {session.username ?? 'n/a'}</p>
+            <p className="text-muted">{session.protocol.toUpperCase()} {'->'} {session.username ?? 'n/a'}</p>
           </article>
         ))}
       </div>

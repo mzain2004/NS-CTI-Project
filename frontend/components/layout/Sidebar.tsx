@@ -1,4 +1,5 @@
 "use client"
+import Link from 'next/link';
 import { LayoutDashboard, Upload, Bug, Shield, Network, FileText } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
@@ -13,7 +14,6 @@ const navItems = [
 
 export default function Sidebar() {
   const [apiStatus, setApiStatus] = useState('Checking...');
-
   useEffect(() => {
     const checkApiStatus = async () => {
       try {
@@ -25,7 +25,6 @@ export default function Sidebar() {
     };
     checkApiStatus();
   }, []);
-
   return (
     <aside className="fixed top-0 left-0 h-full w-60 bg-[#111827] text-[#f9fafb] flex flex-col">
       <div className="flex items-center justify-center h-16 border-b border-[#374151]">
