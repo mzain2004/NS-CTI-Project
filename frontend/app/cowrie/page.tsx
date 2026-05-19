@@ -1,9 +1,16 @@
 import SamplePicker from '@/components/cowrie/SamplePicker'
 import SessionFeed from '@/components/cowrie/SessionFeed'
 import { getCowrieLogs, getCowrieSamples } from '@/lib/api'
+import type { CowrieSession, CowrieSample } from '@shared/types'
 
 export default async function CowriePage() {
-  const [sessions, samples] = await Promise.all([getCowrieLogs(), getCowrieSamples()])
+  let sessions: CowrieSession[] = []
+  let samples: CowrieSample[] = []
+  try {
+    ;[sessions, samples] = await Promise.all([getCowrieLogs(), getCowrieSamples()])
+  } catch {
+    // API unavailable at build/request time — render empty state
+  }
 
   return (
     <section className="stack-lg">

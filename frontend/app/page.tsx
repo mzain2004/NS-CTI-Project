@@ -4,6 +4,19 @@ import { PieChart, Pie, Cell, Tooltip } from 'recharts';
 
 const COLORS = ['#dc2626', '#f59e0b', '#22c55e', '#6366f1'];
 
+interface RecentAnalysis {
+  id: string;
+  filename: string;
+  risk_level: string;
+  sha256: string;
+  time_ago: string;
+}
+
+interface RiskItem {
+  name: string;
+  value: number;
+}
+
 export default function DashboardPage() {
   const [stats, setStats] = useState({
     filesAnalyzed: 0,
@@ -11,22 +24,26 @@ export default function DashboardPage() {
     iocsExtracted: 0,
     wazuhAlerts: 0,
   });
-  const [riskDistribution, setRiskDistribution] = useState([]);
-  const [recentAnalyses, setRecentAnalyses] = useState([]);
+  const [riskDistribution, setRiskDistribution] = useState<RiskItem[]>([]);
+  const [recentAnalyses, setRecentAnalyses] = useState<RecentAnalysis[]>([]);
 
   useEffect(() => {
     const fetchStats = async () => {
-      const statsResponse = await fetch('/api/dashboard/stats');
-      const statsData = await statsResponse.json();
-      setStats(statsData);
+      try {
+        const statsResponse = await fetch('/api/dashboard/stats');
+        const statsData = await statsResponse.json();
+        setStats(statsData);
 
-      const riskResponse = await fetch('/api/dashboard/risk-distribution');
-      const riskData = await riskResponse.json();
-      setRiskDistribution(riskData);
+        const riskResponse = await fetch('/api/dashboard/risk-distribution');
+        const riskData = await riskResponse.json();
+        setRiskDistribution(riskData);
 
-      const analysesResponse = await fetch('/api/analyze/list');
-      const analysesData = await analysesResponse.json();
-      setRecentAnalyses(analysesData);
+        const analysesResponse = await fetch('/api/analyze/list');
+        const analysesData = await analysesResponse.json();
+        setRecentAnalyses(analysesData);
+      } catch {
+        // API unavailable — silently degrade
+      }
     };
 
     fetchStats();
@@ -109,4 +126,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-
