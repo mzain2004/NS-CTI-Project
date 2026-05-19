@@ -61,10 +61,10 @@ services:
     container_name: nscti-cowrie
     ports:
       - "2222:2222"
-      - "2223:2223"
+      - "2223:2323"
     volumes:
-      - cowrie_logs:/cowrie/var/log/cowrie
-      - cowrie_downloads:/cowrie/var/lib/cowrie/downloads
+      - cowrie_logs:/cowrie/cowrie-git/var/log/cowrie
+      - cowrie_downloads:/cowrie/cowrie-git/var/lib/cowrie/downloads
     restart: unless-stopped
     networks:
       - nscti

@@ -4,13 +4,12 @@ import os
 import json
 from pathlib import Path
 from dotenv import load_dotenv
-from typing import Dict
 
 async def get_groq_client():
     """Lazy init — call this inside every function that needs client"""
-    from groq import Groq
+    from groq import AsyncGroq
     load_dotenv(Path(__file__).resolve().parent.parent / ".env")
-    return Groq(api_key=os.getenv("GROQ_API_KEY"))
+    return AsyncGroq(api_key=os.getenv("GROQ_API_KEY"))
 
 async def analyze_with_groq(static_analysis: dict) -> dict:
     """
@@ -56,39 +55,60 @@ async def analyze_with_groq(static_analysis: dict) -> dict:
 
         # Construct the user prompt
         user_prompt = f"""
-        File Name: {static_analysis['file_name']}
-        File Size: {static_analysis['file_size']}
-        File Type: {static_analysis['file_type']}
-        Hashes: {static_analysis['hashes']}
-        PE Sections: {static_analysis['pe_analysis']['sections']}
-        Suspicious Imports: {static_analysis['pe_analysis']['imports'][:20]}
-        YARA Hits: {static_analysis['yara_matches']}
-        Extracted Strings: {static_analysis['strings'][:50]}
-        Packed: {static_analysis['pe_analysis']['is_packed']}
+        File Name: {static_analysis.get('file_name')}
+        File Size: {static_analysis.get('file_size')}
+        File Type: {static_analysis.get('file_type')}
+        MD5: {static_analysis.get('md5')}
+        SHA256: {static_analysis.get('sha256')}
+        PE Sections: {static_analysis.get('pe_sections')}
+        Suspicious Imports: {static_analysis.get('imports', [])[:20]}
+        YARA Hits: {static_analysis.get('yara_hits')}
+        Extracted Strings: {static_analysis.get('strings_extracted', [])[:50]}
+        Packed: {static_analysis.get('is_packed')}
         """
 
         # Initialize Groq client
         client = await get_groq_client()
 
         # Call Groq API
-        response = await client.chat(
-            system_prompt=system_prompt,
-            user_prompt=user_prompt
+        chat_completion = await client.chat.completions.create(
+            model="llama3-8b-8192",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt}
+            ],
+            temperature=0.0
         )
+        response = chat_completion.choices[0].message.content
 
         # Parse JSON response
         try:
-            return json.loads(response.strip("`"))
+            result = json.loads(response.strip("`").strip())
         except json.JSONDecodeError:
             # Retry once with clarification
-            retry_response = await client.chat(
-                system_prompt=system_prompt,
-                user_prompt=user_prompt + "\nRespond with only JSON, no other text."
+            retry_completion = await client.chat.completions.create(
+                model="llama3-8b-8192",
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt + "\nRespond with only JSON, no other text."}
+                ],
+                temperature=0.0
             )
+            retry_response = retry_completion.choices[0].message.content
             try:
-                return json.loads(retry_response.strip("`"))
+                result = json.loads(retry_response.strip("`").strip())
             except json.JSONDecodeError:
-                return {"error": "parse_failed", "raw_response": retry_response}
+                result = {"error": "parse_failed", "raw_response": retry_response}
+
+        # Save to disk for report service
+        sha256 = static_analysis.get('sha256')
+        if sha256:
+            output_path = Path("/tmp/samples") / sha256 / "groq.json"
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            with output_path.open("w") as f:
+                json.dump(result, f, indent=4)
+
+        return result
 
     except Exception as e:
         return {"error": str(e)}

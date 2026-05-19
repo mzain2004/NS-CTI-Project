@@ -74,7 +74,7 @@ def analyze_pe(file_path: Path) -> dict:
             section_info = {
                 'name': section.Name.decode().strip('\x00'),
                 'virtual_size': section.Misc_VirtualSize,
-                'size_of_raw_data': section.SizeOfRawData,
+                'raw_size': section.SizeOfRawData,
                 'entropy': section.get_entropy(),
                 'md5': hashlib.md5(section.get_data()).hexdigest(),
                 'suspicious': section.get_entropy() > 7.2 or section.Name.decode().strip('\x00') in ['.packed', 'UPX0', 'UPX1', '.themida']
@@ -157,12 +157,18 @@ async def run_full_analysis(file_path: Path, file_name: str) -> dict:
 
     result = {
         'file_name': file_name,
-        'file_path': str(file_path),
-        'hashes': hashes,
+        'file_size': file_path.stat().st_size,
         'file_type': file_type,
-        'pe_analysis': pe_analysis,
-        'strings': strings,
-        'yara_matches': yara_matches
+        'md5': hashes['md5'],
+        'sha1': hashes['sha1'],
+        'sha256': hashes['sha256'],
+        'pe_sections': pe_analysis.get('sections', []) if pe_analysis and 'error' not in pe_analysis else [],
+        'imports': pe_analysis.get('imports', []) if pe_analysis and 'error' not in pe_analysis else [],
+        'strings_extracted': strings,
+        'yara_hits': yara_matches,
+        'is_packed': pe_analysis.get('is_packed', False) if pe_analysis and 'error' not in pe_analysis else False,
+        'compile_timestamp': pe_analysis.get('compile_timestamp') if pe_analysis and 'error' not in pe_analysis else None,
+        'entry_point': pe_analysis.get('entry_point', '') if pe_analysis and 'error' not in pe_analysis else '',
     }
 
     output_dir = Path('/tmp/samples') / hashes['sha256']

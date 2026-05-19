@@ -16,7 +16,7 @@ warnings.filterwarnings("ignore", category=InsecureRequestWarning)
 # - Fallback to env var for custom Wazuh URL
 WAZUH_URL = os.getenv("WAZUH_URL", "https://172.17.0.1:55000")
 WAZUH_USER = os.getenv("WAZUH_USER")
-WAZUH_PASSWORD = os.getenv("WAZUH_PASSWORD")
+WAZUH_PASSWORD = os.getenv("WAZUH_PASSWORD") or os.getenv("WAZUH_PASS")
 
 _token_cache = {"token": None, "expiry": None}
 

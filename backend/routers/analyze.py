@@ -6,12 +6,11 @@ import hashlib
 import json
 
 from fastapi import APIRouter, File, UploadFile, HTTPException
-from fastapi.responses import JSONResponse
 
-from models.analysis import AnalysisResult
+from models.analysis import AnalysisResult, StaticAnalysis, GroqAnalysis, VirusTotalResult, VirusTotalEngineHit
 from services.groq_service import analyze_with_groq
 from services.static_analysis import run_full_analysis
-from services.virustotal_service import get_virustotal_result, lookup_hash
+from services.virustotal_service import lookup_hash
 
 router = APIRouter(tags=['analyze'])
 
@@ -19,111 +18,145 @@ SAMPLES_PATH = Path('/tmp/samples')
 
 
 @router.post('/analyze', response_model=AnalysisResult)
-async def analyze_file(file: UploadFile = File(...)) -> AnalysisResult | JSONResponse:
-    try:
-        content = await file.read()
-        static_result = run_full_analysis(content, file.filename)
-        groq_result = analyze_with_groq(static_result)
-        vt_result = get_virustotal_result(static_result.sha256)
-
-        return AnalysisResult(
-            analysis_id=f'anl_{static_result.sha256[:12]}',
-            status='complete',
-            created_at=datetime.now(tz=timezone.utc).isoformat(),
-            file_name=file.filename,
-            static_analysis=static_result,
-            groq_analysis=groq_result,
-            virustotal=vt_result,
-            error=None,
-        )
-    except Exception as exc:
-        return JSONResponse(status_code=500, content={'error': f'analysis_failed: {exc}'})
-
-
-@router.get('/analyze/{analysis_id}', response_model=AnalysisResult)
-async def get_analysis(analysis_id: str) -> AnalysisResult | JSONResponse:
-    try:
-        return AnalysisResult(
-            analysis_id=analysis_id,
-            status='complete',
-            created_at=datetime.now(tz=timezone.utc).isoformat(),
-            file_name='placeholder.bin',
-            static_analysis=None,
-            groq_analysis=None,
-            virustotal=None,
-            error=None,
-        )
-    except Exception as exc:
-        return JSONResponse(status_code=500, content={'error': f'analysis_fetch_failed: {exc}'})
-
-
-@router.post('/api/analyze', response_model=dict)
 async def analyze_file(
     file: UploadFile = File(None),
     file_path: str = None,
     cowrie_sample: str = None
-):
+) -> AnalysisResult:
     try:
         if file:
             content = await file.read()
             sha256 = hashlib.sha256(content).hexdigest()
             sample_dir = SAMPLES_PATH / sha256 / 'original'
             sample_dir.parent.mkdir(parents=True, exist_ok=True)
-            with (sample_dir).open('wb') as f:
+            with sample_dir.open('wb') as f:
                 f.write(content)
             file_path = str(sample_dir)
+            filename = file.filename
         elif file_path:
             file_path = Path(file_path)
+            sha256 = hashlib.sha256(file_path.read_bytes()).hexdigest()
+            filename = file_path.name
         elif cowrie_sample:
             file_path = Path(cowrie_sample)
+            sha256 = hashlib.sha256(file_path.read_bytes()).hexdigest()
+            filename = file_path.name
         else:
             raise HTTPException(status_code=400, detail="No valid input provided")
 
         # Run static analysis
-        static_result = await run_full_analysis(Path(file_path), file.filename if file else Path(file_path).name)
-        analysis_id = static_result['hashes']['sha256'][:16] + datetime.now().strftime('%Y%m%d%H%M%S')
-        result_path = SAMPLES_PATH / static_result['hashes']['sha256'] / 'result.json'
+        static_result = await run_full_analysis(Path(file_path), filename)
+        result_path = SAMPLES_PATH / sha256 / 'result.json'
 
         # Run Groq analysis
         groq_result = await analyze_with_groq(static_result)
-        static_result['groq_analysis'] = groq_result
 
         # Run VirusTotal lookup
-        vt_result = await lookup_hash(static_result['hashes']['sha256'])
-        static_result['virustotal'] = vt_result
+        vt_result = await lookup_hash(sha256)
+
+        # Build structures matching Pydantic validation schemas
+        static_model = StaticAnalysis.model_validate(static_result)
+        
+        groq_model = None
+        if groq_result and "error" not in groq_result:
+            try:
+                groq_model = GroqAnalysis.model_validate(groq_result)
+            except Exception:
+                pass
+
+        vt_model = None
+        if vt_result and "error" not in vt_result:
+            try:
+                stats = vt_result.get("last_analysis_stats", {})
+                malicious = stats.get("malicious", 0)
+                suspicious = stats.get("suspicious", 0)
+                undetected = stats.get("undetected", 0)
+                total_engines = sum(stats.values()) if stats else 0
+                detections = malicious + suspicious
+                
+                engine_hits = []
+                for item in vt_result.get("last_analysis_results", []):
+                    engine_hits.append(VirusTotalEngineHit(
+                        engine=item.get("engine_name", "Unknown"),
+                        result=item.get("result", "undetected")
+                    ))
+
+                vt_model = VirusTotalResult(
+                    detection_ratio=vt_result.get("detection_ratio", "0/0"),
+                    detections=detections,
+                    total_engines=total_engines,
+                    malicious=malicious,
+                    suspicious=suspicious,
+                    undetected=undetected,
+                    engine_hits=engine_hits,
+                    first_seen=str(vt_result.get("first_submission_date")) if vt_result.get("first_submission_date") else None,
+                    last_seen=str(vt_result.get("last_analysis_date")) if vt_result.get("last_analysis_date") else None,
+                    community_score=vt_result.get("community_score", 0),
+                    vt_link=vt_result.get("vt_link", f"https://www.virustotal.com/gui/file/{sha256}"),
+                    family_names=vt_result.get("names", []) if isinstance(vt_result.get("names"), list) else [],
+                )
+            except Exception:
+                pass
+
+        analysis_res = AnalysisResult(
+            analysis_id=sha256,
+            status='complete',
+            created_at=datetime.now(tz=timezone.utc).isoformat(),
+            file_name=filename,
+            static_analysis=static_model,
+            groq_analysis=groq_model,
+            virustotal=vt_model,
+            error=None,
+        )
 
         # Save combined result
         with result_path.open('w') as f:
-            json.dump(static_result, f, indent=4)
+            json.dump(analysis_res.model_dump(), f, indent=4)
 
-        return {"analysis_id": analysis_id, "result": static_result}
+        return analysis_res
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
 
 
-@router.get('/api/analyze/{analysis_id}', response_model=dict)
-def get_analysis(analysis_id: str):
+@router.get('/analyze/{analysis_id}', response_model=AnalysisResult)
+async def get_analysis(analysis_id: str) -> AnalysisResult:
     try:
-        for sample_dir in SAMPLES_PATH.iterdir():
-            if sample_dir.name.startswith(analysis_id):
-                result_path = sample_dir / 'result.json'
-                if result_path.exists():
-                    with result_path.open('r') as f:
-                        return json.load(f)
+        # Search by exact SHA256 directory name
+        result_path = SAMPLES_PATH / analysis_id / 'result.json'
+        if result_path.exists():
+            with result_path.open('r') as f:
+                data = json.load(f)
+                return AnalysisResult.model_validate(data)
+        
+        # Fallback to search directories starting with analysis_id
+        if SAMPLES_PATH.exists():
+            for sample_dir in SAMPLES_PATH.iterdir():
+                if sample_dir.is_dir() and sample_dir.name.startswith(analysis_id):
+                    result_path = sample_dir / 'result.json'
+                    if result_path.exists():
+                        with result_path.open('r') as f:
+                            data = json.load(f)
+                            return AnalysisResult.model_validate(data)
+
         raise HTTPException(status_code=404, detail="Analysis not found")
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch analysis: {str(e)}")
 
 
-@router.get('/api/analyze/list', response_model=list)
-def list_analyses():
+@router.get('/analyze/list', response_model=list[AnalysisResult])
+async def list_analyses() -> list[AnalysisResult]:
     try:
         analyses = []
-        for sample_dir in SAMPLES_PATH.iterdir():
-            result_path = sample_dir / 'result.json'
-            if result_path.exists():
-                with result_path.open('r') as f:
-                    analyses.append(json.load(f))
-        return sorted(analyses, key=lambda x: x['created_at'], reverse=True)
+        if SAMPLES_PATH.exists():
+            for sample_dir in SAMPLES_PATH.iterdir():
+                if sample_dir.is_dir():
+                    result_path = sample_dir / 'result.json'
+                    if result_path.exists():
+                        with result_path.open('r') as f:
+                            data = json.load(f)
+                            analyses.append(AnalysisResult.model_validate(data))
+        return sorted(analyses, key=lambda x: x.created_at, reverse=True)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to list analyses: {str(e)}")

@@ -55,27 +55,39 @@ async def generate_report(analysis_id: str, analyst_name: str = "Auto-Generated"
     vt_path = analysis_dir / "virustotal.json"
     static_path = analysis_dir / "static.json"
 
-    with open(result_path) as f:
-        result_data = json.load(f)
-    with open(groq_path) as f:
-        groq_data = json.load(f)
-    with open(vt_path) as f:
-        vt_data = json.load(f)
-    with open(static_path) as f:
-        static_data = json.load(f)
+    result_data = {}
+    if result_path.exists():
+        with open(result_path) as f:
+            result_data = json.load(f)
+
+    groq_data = {}
+    if groq_path.exists():
+        with open(groq_path) as f:
+            groq_data = json.load(f)
+
+    vt_data = {}
+    if vt_path.exists():
+        with open(vt_path) as f:
+            vt_data = json.load(f)
+
+    static_data = {}
+    if static_path.exists():
+        with open(static_path) as f:
+            static_data = json.load(f)
 
     # Generate report ID
     report_id = str(uuid.uuid4())
 
-    # Prepare IOC data
-    iocs = result_data.get("iocs", {})
+    # Prepare IOC data from nested groq_analysis
+    groq_analysis = result_data.get("groq_analysis") or groq_data
+    iocs = groq_analysis.get("iocs", {}) if groq_analysis else {}
     ioc_lines = []
     for ip in iocs.get("ips", []):
         ioc_lines.append(f"IP: {ip}")
     for domain in iocs.get("domains", []):
         ioc_lines.append(f"DOMAIN: {domain}")
-    for hash in iocs.get("hashes", []):
-        ioc_lines.append(f"HASH: {hash}")
+    for hash_val in iocs.get("hashes", []):
+        ioc_lines.append(f"HASH: {hash_val}")
     for url in iocs.get("urls", []):
         ioc_lines.append(f"URL: {url}")
 
