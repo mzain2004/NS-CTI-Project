@@ -11,7 +11,7 @@ COPY . .
 ARG NEXT_PUBLIC_API_URL=http://165.232.174.172:8000
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 
-RUN pnpm build
+RUN npm run build
 
 FROM node:20-alpine AS runner
 WORKDIR /app
