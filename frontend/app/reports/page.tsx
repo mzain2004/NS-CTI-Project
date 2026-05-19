@@ -1,3 +1,4 @@
+"use client"
 import { useEffect, useState } from 'react';
 import ExportButtons from '@/components/reports/ExportButtons';
 import ReportCard from '@/components/reports/ReportCard';
@@ -61,3 +62,4 @@ export default function ReportsPage() {
     </section>
   );
 }
+

@@ -1,3 +1,4 @@
+"use client"
 import { LayoutDashboard, Upload, Bug, Shield, Network, FileText } from 'lucide-react';
 import { useState, useEffect } from 'react';
 

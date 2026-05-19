@@ -1,3 +1,4 @@
+"use client"
 import { useEffect, useState } from 'react';
 import { PieChart, Pie, Cell, Tooltip } from 'recharts';
 
@@ -108,3 +109,4 @@ export default function DashboardPage() {
     </div>
   );
 }
+
