@@ -113,6 +113,36 @@ async def analyze_file(
         with result_path.open('w') as f:
             json.dump(analysis_res.model_dump(), f, indent=4)
 
+        # Autonomous active defense trigger
+        import os
+        if groq_result and groq_result.get("risk_level") in ["HIGH", "CRITICAL"]:
+            attacker_ip = None
+            log_path = os.getenv("COWRIE_LOG_PATH", "/var/log/cowrie/cowrie.json")
+            if log_path and Path(log_path).exists():
+                try:
+                    with open(log_path, "r") as f:
+                        for line in f:
+                            try:
+                                event = json.loads(line)
+                                if event.get("eventid") == "cowrie.session.file_download" and event.get("sha256") == sha256:
+                                    attacker_ip = event.get("src_ip")
+                                    break
+                            except Exception:
+                                continue
+                except Exception as e:
+                    import logging
+                    logging.getLogger("analyze-router").error(f"Error parsing cowrie logs for active defense: {e}")
+
+            if attacker_ip:
+                import logging
+                logger = logging.getLogger("active-defense")
+                logger.info(f"Autonomous defense trigger: high-risk signature identified ({groq_result.get('risk_level')}). IP {attacker_ip} will be blocked.")
+                from services.pfsense_service import block_ip_on_firewall
+                try:
+                    await block_ip_on_firewall(attacker_ip)
+                except Exception as trigger_err:
+                    logger.error(f"Failed to execute autonomous firewall block on IP {attacker_ip}: {trigger_err}")
+
         return analysis_res
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")

@@ -1,52 +1,118 @@
 from __future__ import annotations
 
-from models.pfsense import BlockRequest, BlockResponse
+import os
+import logging
+import asyncssh
 from typing import List, Dict
 
-async def get_firewall_rules() -> List[Dict]:
-    """
-    Fetch the current firewall rules from the pfSense API.
-    Implementation will query the pfSense API endpoint for firewall rules
-    and return a list of dictionaries representing each rule.
-    """
-    raise NotImplementedError("pfSense API not configured yet")
+logger = logging.getLogger("pfsense-service")
 
-async def block_ip(ip: str, reason: str, analysis_id: str) -> Dict:
+async def block_ip_on_firewall(target_ip: str) -> dict:
     """
-    Block a specific IP address in the pfSense firewall.
-    Implementation will send a request to the pfSense API to add a block rule
-    for the given IP address, including the reason and analysis ID for tracking.
+    Establish SSH connection to the pfSense firewall and execute:
+    easyrule block wan <target_ip>
     """
-    raise NotImplementedError("pfSense API not configured yet")
+    host = os.getenv("PFSENSE_HOST")
+    user = os.getenv("PFSENSE_USER")
+    password = os.getenv("PFSENSE_PASS")
+
+    if not host or not user or not password:
+        logger.error("pfSense credentials (PFSENSE_HOST, PFSENSE_USER, PFSENSE_PASS) are missing from environment.")
+        return {"status": "error", "message": "pfSense firewall credentials not configured"}
+
+    logger.info(f"Initiating active defense: attempting to block IP {target_ip} on firewall {host} via SSH...")
+
+    try:
+        # Connect to pfSense firewall bypassing host key verification for deployment convenience
+        async with asyncssh.connect(
+            host,
+            username=user,
+            password=password,
+            known_hosts=None
+        ) as conn:
+            command = f"easyrule block wan {target_ip}"
+            logger.info(f"Connected to pfSense. Executing: {command}")
+            result = await conn.run(command)
+
+            if result.exit_status == 0:
+                logger.info(f"Successfully blocked IP {target_ip} on pfSense. Output: {result.stdout.strip()}")
+                return {
+                    "status": "success",
+                    "ip": target_ip,
+                    "exit_status": result.exit_status,
+                    "stdout": result.stdout.strip(),
+                    "stderr": result.stderr.strip()
+                }
+            else:
+                logger.error(f"Failed to execute block command on pfSense. Exit status: {result.exit_status}. Stderr: {result.stderr.strip()}")
+                return {
+                    "status": "error",
+                    "message": "Block command failed",
+                    "exit_status": result.exit_status,
+                    "stdout": result.stdout.strip(),
+                    "stderr": result.stderr.strip()
+                }
+
+    except asyncssh.Error as ssh_err:
+        logger.error(f"SSH authentication or connection error targeting pfSense: {ssh_err}")
+        return {"status": "error", "message": f"SSH error: {ssh_err}"}
+    except Exception as e:
+        logger.error(f"Unexpected error executing pfSense active defense command: {e}")
+        return {"status": "error", "message": str(e)}
+
+async def block_ip(ip: str, reason: str = "Manual Block", analysis_id: str | None = None) -> Dict:
+    """
+    Manual route hook to block a specific IP address in the pfSense firewall.
+    """
+    res = await block_ip_on_firewall(ip)
+    if res.get("status") == "success":
+        return {
+            "status": "blocked",
+            "ip": ip,
+            "reason": reason,
+            "analysis_id": analysis_id,
+            "details": res
+        }
+    else:
+        raise Exception(res.get("message", "Unknown firewall SSH error"))
+
+async def get_firewall_rules() -> List[Dict]:
+    raise NotImplementedError("pfSense SSH integration does not support listing firewall rules")
 
 async def block_ip_list(ips: List[str], reason: str, analysis_id: str) -> List[Dict]:
-    """
-    Block a list of IP addresses in the pfSense firewall.
-    Implementation will iterate over the list of IPs and call the pfSense API
-    to add block rules for each IP address, including the reason and analysis ID.
-    """
-    raise NotImplementedError("pfSense API not configured yet")
+    results = []
+    for ip in ips:
+        try:
+            res = await block_ip(ip, reason, analysis_id)
+            results.append(res)
+        except Exception as e:
+            results.append({"status": "error", "ip": ip, "message": str(e)})
+    return results
 
 async def unblock_ip(ip: str) -> Dict:
     """
-    Unblock a specific IP address in the pfSense firewall.
-    Implementation will send a request to the pfSense API to remove the block rule
-    for the given IP address.
+    Optional unblock execution path using easyrule.
     """
-    raise NotImplementedError("pfSense API not configured yet")
+    host = os.getenv("PFSENSE_HOST")
+    user = os.getenv("PFSENSE_USER")
+    password = os.getenv("PFSENSE_PASS")
+
+    if not host or not user or not password:
+        raise NotImplementedError("pfSense credentials not configured")
+
+    try:
+        async with asyncssh.connect(host, username=user, password=password, known_hosts=None) as conn:
+            result = await conn.run(f"easyrule unblock wan {ip}")
+            if result.exit_status == 0:
+                return {"status": "unblocked", "ip": ip, "stdout": result.stdout.strip()}
+            else:
+                raise Exception(f"Unblock failed: {result.stderr.strip()}")
+    except Exception as e:
+        logger.error(f"pfSense unblock error: {e}")
+        raise Exception(f"Failed to unblock IP: {str(e)}")
 
 async def get_blocked_ips() -> List[Dict]:
-    """
-    Fetch the list of currently blocked IP addresses from the pfSense firewall.
-    Implementation will query the pfSense API endpoint for blocked IPs
-    and return a list of dictionaries representing each blocked IP.
-    """
-    raise NotImplementedError("pfSense API not configured yet")
+    raise NotImplementedError("pfSense SSH integration does not support listing blocked IPs")
 
 async def create_alias(name: str, ips: List[str], description: str) -> Dict:
-    """
-    Create an alias in the pfSense firewall for a group of IP addresses.
-    Implementation will send a request to the pfSense API to create an alias
-    with the given name, list of IPs, and description.
-    """
-    raise NotImplementedError("pfSense API not configured yet")
+    raise NotImplementedError("pfSense SSH integration does not support creating aliases")
