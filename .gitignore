@@ -11,3 +11,5 @@ Project/backend/venv/
 .jetro/
 __pycache__/
 *.pyc
+frontend/node_modules/
+frontend/.next/
