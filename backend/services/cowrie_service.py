@@ -109,3 +109,9 @@ def list_cowrie_samples(downloads_path: str = None) -> list[dict]:
             })
 
     return sorted(samples, key=lambda x: x["modified_at"], reverse=True)
+
+
+async def execute(context: dict) -> dict:
+    limit = context.get("limit", 20)
+    logs = parse_cowrie_logs(limit=limit)
+    return {"cowrie_logs": logs}

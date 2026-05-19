@@ -177,3 +177,13 @@ async def run_full_analysis(file_path: Path, file_name: str) -> dict:
         json.dump(result, f, indent=4)
 
     return result
+
+
+async def execute(context: dict) -> dict:
+    file_path_str = context.get("file_path")
+    file_name = context.get("filename", "Unknown")
+    if not file_path_str:
+        return {"error": "Missing file_path in context for static analysis"}
+    file_path = Path(file_path_str)
+    result = await run_full_analysis(file_path, file_name)
+    return {"static_analysis": result, "sha256": result.get("sha256")}

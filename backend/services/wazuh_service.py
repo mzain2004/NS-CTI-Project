@@ -112,3 +112,12 @@ async def get_stats() -> Dict:
 
 def get_wazuh_alerts(limit: int = 20):
     return {"status": "not_configured", "message": "Wazuh not yet deployed"}
+
+
+async def execute(context: dict) -> dict:
+    limit = context.get("limit", 10)
+    try:
+        alerts = await get_alerts(limit=limit)
+        return {"wazuh_alerts": alerts}
+    except Exception as e:
+        return {"wazuh_alerts": [], "wazuh_error": str(e)}

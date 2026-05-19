@@ -80,3 +80,14 @@ def get_virustotal_result(file_hash: str) -> VirusTotalResult:
         vt_link=f'https://www.virustotal.com/gui/file/{file_hash}',
         family_names=[],
     )
+
+
+async def execute(context: dict) -> dict:
+    sha256 = context.get("sha256")
+    if not sha256:
+        static_analysis = context.get("static_analysis", {})
+        sha256 = static_analysis.get("sha256")
+    if not sha256:
+        return {"error": "Missing sha256 in context for VirusTotal lookup"}
+    result = await lookup_hash(sha256)
+    return {"virustotal": result}

@@ -44,18 +44,31 @@ async def analyze_file(
         else:
             raise HTTPException(status_code=400, detail="No valid input provided")
 
-        # Run static analysis
-        static_result = await run_full_analysis(Path(file_path), filename)
-        result_path = SAMPLES_PATH / sha256 / 'result.json'
+        # Run the Agentic Orchestrator
+        import uuid
+        from models.state import AgentState
+        from services.orchestrator import Orchestrator
 
-        # Run Groq analysis
-        groq_result = await analyze_with_groq(static_result)
+        initial_state = AgentState(
+            task_id=uuid.uuid4(),
+            context={
+                "file_path": str(file_path),
+                "filename": filename,
+                "sha256": sha256
+            }
+        )
 
-        # Run VirusTotal lookup
-        vt_result = await lookup_hash(sha256)
+        final_state = await Orchestrator.run(task="analyze", state=initial_state)
+
+        # Extract results from orchestrator context
+        static_result = final_state.context.get("static_analysis")
+        groq_result = final_state.context.get("groq_analysis")
+        vt_result = final_state.context.get("virustotal")
 
         # Build structures matching Pydantic validation schemas
-        static_model = StaticAnalysis.model_validate(static_result)
+        static_model = None
+        if static_result:
+            static_model = StaticAnalysis.model_validate(static_result)
         
         groq_model = None
         if groq_result and "error" not in groq_result:
@@ -109,39 +122,9 @@ async def analyze_file(
             error=None,
         )
 
-        # Save combined result
+        result_path = SAMPLES_PATH / sha256 / 'result.json'
         with result_path.open('w') as f:
             json.dump(analysis_res.model_dump(), f, indent=4)
-
-        # Autonomous active defense trigger
-        import os
-        if groq_result and groq_result.get("risk_level") in ["HIGH", "CRITICAL"]:
-            attacker_ip = None
-            log_path = os.getenv("COWRIE_LOG_PATH", "/var/log/cowrie/cowrie.json")
-            if log_path and Path(log_path).exists():
-                try:
-                    with open(log_path, "r") as f:
-                        for line in f:
-                            try:
-                                event = json.loads(line)
-                                if event.get("eventid") == "cowrie.session.file_download" and event.get("sha256") == sha256:
-                                    attacker_ip = event.get("src_ip")
-                                    break
-                            except Exception:
-                                continue
-                except Exception as e:
-                    import logging
-                    logging.getLogger("analyze-router").error(f"Error parsing cowrie logs for active defense: {e}")
-
-            if attacker_ip:
-                import logging
-                logger = logging.getLogger("active-defense")
-                logger.info(f"Autonomous defense trigger: high-risk signature identified ({groq_result.get('risk_level')}). IP {attacker_ip} will be blocked.")
-                from services.pfsense_service import block_ip_on_firewall
-                try:
-                    await block_ip_on_firewall(attacker_ip)
-                except Exception as trigger_err:
-                    logger.error(f"Failed to execute autonomous firewall block on IP {attacker_ip}: {trigger_err}")
 
         return analysis_res
     except Exception as e:

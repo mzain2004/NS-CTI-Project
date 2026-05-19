@@ -72,7 +72,7 @@ async def analyze_with_groq(static_analysis: dict) -> dict:
 
         # Call Groq API
         chat_completion = await client.chat.completions.create(
-            model="llama3-8b-8192",
+            model="llama-3.1-8b-instant",
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt}
@@ -87,7 +87,7 @@ async def analyze_with_groq(static_analysis: dict) -> dict:
         except json.JSONDecodeError:
             # Retry once with clarification
             retry_completion = await client.chat.completions.create(
-                model="llama3-8b-8192",
+                model="llama-3.1-8b-instant",
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_prompt + "\nRespond with only JSON, no other text."}
@@ -112,3 +112,17 @@ async def analyze_with_groq(static_analysis: dict) -> dict:
 
     except Exception as e:
         return {"error": str(e)}
+
+
+async def execute(context: dict) -> dict:
+    static_analysis = context.get("static_analysis")
+    if not static_analysis:
+        return {"error": "Missing static_analysis in context for Groq behavioral analysis"}
+    
+    dynamic_analysis = context.get("dynamic_analysis")
+    if dynamic_analysis:
+        static_analysis = dict(static_analysis)
+        static_analysis["dynamic_sandbox_results"] = dynamic_analysis
+        
+    result = await analyze_with_groq(static_analysis)
+    return {"groq_analysis": result}

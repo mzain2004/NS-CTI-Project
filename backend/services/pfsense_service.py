@@ -116,3 +116,33 @@ async def get_blocked_ips() -> List[Dict]:
 
 async def create_alias(name: str, ips: List[str], description: str) -> Dict:
     raise NotImplementedError("pfSense SSH integration does not support creating aliases")
+
+
+async def execute(context: dict) -> dict:
+    import json
+    from pathlib import Path
+    attacker_ip = context.get("attacker_ip")
+    if not attacker_ip:
+        static_analysis = context.get("static_analysis", {})
+        sha256 = static_analysis.get("sha256")
+        if sha256:
+            log_path = os.getenv("COWRIE_LOG_PATH", "/var/log/cowrie/cowrie.json")
+            if log_path and Path(log_path).exists():
+                try:
+                    with open(log_path, "r") as f:
+                        for line in f:
+                            try:
+                                event = json.loads(line)
+                                if event.get("eventid") == "cowrie.session.file_download" and event.get("sha256") == sha256:
+                                    attacker_ip = event.get("src_ip")
+                                    break
+                            except Exception:
+                                continue
+                except Exception:
+                    pass
+
+    if not attacker_ip:
+        return {"error": "Missing attacker_ip in context for pfSense firewall block"}
+    
+    result = await block_ip_on_firewall(attacker_ip)
+    return {"pfsense_block": result}
