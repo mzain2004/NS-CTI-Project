@@ -80,7 +80,7 @@ class GroqAnalysis(BaseModel):
     risk_level: str
     recommended_actions: list[str]
     analyst_notes: str
-    raw_response: str
+    raw_response: str = ""
 
 
 class VirusTotalEngineHit(BaseModel):

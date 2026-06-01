@@ -73,6 +73,8 @@ async def analyze_file(
         groq_model = None
         if groq_result and "error" not in groq_result:
             try:
+                if isinstance(groq_result, dict) and "raw_response" not in groq_result:
+                    groq_result["raw_response"] = ""
                 groq_model = GroqAnalysis.model_validate(groq_result)
             except Exception:
                 pass

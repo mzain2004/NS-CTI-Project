@@ -23,7 +23,7 @@ async def block_ip_on_firewall(target_ip: str) -> dict:
     logger.info(f"Initiating active defense: attempting to block IP {target_ip} on firewall {host} via SSH...")
 
     try:
-        # Connect to pfSense firewall bypassing host key verification for deployment convenience
+        # TODO: Replace StrictHostKeyChecking=no (known_hosts=None) with proper host key validation in production
         async with asyncssh.connect(
             host,
             username=user,
@@ -101,6 +101,7 @@ async def unblock_ip(ip: str) -> Dict:
         raise NotImplementedError("pfSense credentials not configured")
 
     try:
+        # TODO: Replace StrictHostKeyChecking=no (known_hosts=None) with proper host key validation in production
         async with asyncssh.connect(host, username=user, password=password, known_hosts=None) as conn:
             result = await conn.run(f"easyrule unblock wan {ip}")
             if result.exit_status == 0:

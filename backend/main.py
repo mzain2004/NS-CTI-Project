@@ -1,11 +1,13 @@
 """NS-CTI backend entry point."""
+from pathlib import Path
+from dotenv import load_dotenv
+load_dotenv(Path(__file__).resolve().parent / '.env')
+
 import os
 import requests
-from pathlib import Path
 from urllib3.exceptions import InsecureRequestWarning
 import urllib3
 
-from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -13,8 +15,6 @@ from routers import analyze, virustotal, cowrie, wazuh, pfsense, reports
 
 # Suppress SSL warnings for Wazuh self-signed cert
 urllib3.disable_warnings(InsecureRequestWarning)
-
-load_dotenv(Path(__file__).resolve().parent / '.env')
 
 app = FastAPI(
     title="NS-CTI API",
@@ -91,6 +91,32 @@ async def send_discord_alert(client: httpx.AsyncClient, ip: str, score: int, sha
     except Exception as e:
         logger.error(f"Failed to send Discord alert: {e}")
 
+async def send_telegram_alert(client: httpx.AsyncClient, ip: str, score: int, sha256: str | None = None):
+    token = os.getenv("TELEGRAM_BOT_TOKEN")
+    chat_id = os.getenv("TELEGRAM_CHAT_ID")
+    if not token or not chat_id:
+        logger.warning("Telegram bot credentials not configured.")
+        return
+    message = (
+        f"🛡️ *AutoShield: Threat Detected*\n\n"
+        f"👤 *Attacker IP:* `{ip}`\n"
+        f"📊 *VT Malicious Score:* `{score}`\n"
+        f"🔑 *SHA256:* `{sha256 or 'N/A'}`\n\n"
+        f"_Autonomous Defense System_"
+    )
+    url = f"https://api.telegram.org/bot{token}/sendMessage"
+    payload = {
+        "chat_id": chat_id,
+        "text": message,
+        "parse_mode": "Markdown"
+    }
+    try:
+        response = await client.post(url, json=payload)
+        if response.status_code != 200:
+            logger.error(f"Failed to send Telegram alert: {response.text}")
+    except Exception as e:
+        logger.error(f"Error sending Telegram alert: {e}")
+
 async def process_webhook_alert(alert: dict):
     data = alert.get("data", {})
     ip = data.get("srcip") or data.get("src_ip")
@@ -112,6 +138,7 @@ async def process_webhook_alert(alert: dict):
         if score >= 3:
             logger.info(f"High threat detected in webhook! Score: {score}. Sending alert.")
             await send_discord_alert(client, ip, score, sha256)
+            await send_telegram_alert(client, ip, score, sha256)
 
 @app.post("/webhook")
 async def handle_wazuh_webhook(request: Request, background_tasks: BackgroundTasks):

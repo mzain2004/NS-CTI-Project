@@ -86,6 +86,51 @@ def parse_cowrie_logs(log_path: str = None, limit: int = 100) -> list[dict]:
                 except json.JSONDecodeError:
                     continue
 
+        # Post-process sessions to check/attach PCAP URLs from local JSON DB or S3
+        pcap_db_path = Path("/tmp/pcap_urls.json")
+        pcap_urls = {}
+        if pcap_db_path.exists():
+            try:
+                with pcap_db_path.open("r") as db_f:
+                    pcap_urls = json.load(db_f)
+            except Exception:
+                pcap_urls = {}
+
+        pcap_updated = False
+        for session_id, session in sessions.items():
+            if session_id in pcap_urls:
+                session["pcap_url"] = pcap_urls[session_id]
+            else:
+                pcap_file = None
+                for path_candidate in [
+                    Path("/var/log/cowrie/pcaps") / f"{session_id}.pcap",
+                    Path("/var/log/cowrie") / f"{session_id}.pcap",
+                    Path("/tmp/pcaps") / f"{session_id}.pcap",
+                ]:
+                    if path_candidate.exists():
+                        pcap_file = path_candidate
+                        break
+                
+                if pcap_file:
+                    try:
+                        from services.s3_service import _sync_upload
+                        s3_url = _sync_upload(str(pcap_file), session_id)
+                        if s3_url:
+                            pcap_urls[session_id] = s3_url
+                            session["pcap_url"] = s3_url
+                            pcap_updated = True
+                    except Exception as upload_err:
+                        import logging
+                        logging.getLogger("cowrie-service").error(f"Failed to upload PCAP for session {session_id}: {upload_err}")
+        
+        if pcap_updated:
+            try:
+                with pcap_db_path.open("w") as db_f:
+                    json.dump(pcap_urls, db_f, indent=4)
+            except Exception as db_err:
+                import logging
+                logging.getLogger("cowrie-service").error(f"Failed to save PCAP URLs database: {db_err}")
+
         return sorted(sessions.values(), key=lambda x: x["timestamp_start"], reverse=True)[:limit]
 
     except Exception as e:

@@ -129,8 +129,11 @@ def extract_strings(file_path: Path, min_length: int = 4) -> List[str]:
 def run_yara(file_path: Path) -> List[Dict]:
     if not YARA_AVAILABLE:
         return []
-    rules_dir = Path('backend/yara_rules')
+    import logging
+    logger = logging.getLogger("static-analysis")
+    rules_dir = Path('/app/yara_rules')
     if not rules_dir.exists():
+        logger.warning(f"YARA rules directory not found at {rules_dir}. Skipping YARA analysis.")
         return []
     try:
         rules = yara.compile(filepaths={str(rule): str(rule) for rule in rules_dir.glob('*.yar*')})
@@ -144,7 +147,11 @@ def run_yara(file_path: Path) -> List[Dict]:
                 'matched_strings': [s[2].decode(errors='ignore') for s in match.strings]
             })
         return results
-    except yara.Error:
+    except yara.Error as e:
+        logger.error(f"YARA compilation/matching error: {e}")
+        return []
+    except Exception as e:
+        logger.error(f"Unexpected error during YARA analysis: {e}")
         return []
 
 # Function 6: Run Full Analysis

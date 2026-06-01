@@ -32,7 +32,7 @@ async def correlate_indicators(analysis_id: str = Body(..., embed=True)):
     try:
         # Load IoCs from result.json
         result_path = SAMPLES_PATH / analysis_id / 'result.json'
-        iocs = {"ips": [], "domains": []}
+        iocs = {"ips": [], "domains": [], "hashes": []}
         if result_path.exists():
             with result_path.open('r') as f:
                 data = json.load(f)
@@ -40,6 +40,7 @@ async def correlate_indicators(analysis_id: str = Body(..., embed=True)):
                 if groq_iocs:
                     iocs["ips"] = groq_iocs.get("ips", [])
                     iocs["domains"] = groq_iocs.get("domains", [])
+                    iocs["hashes"] = groq_iocs.get("hashes", [])
         
         return await correlate_iocs(iocs)
     except Exception as e:

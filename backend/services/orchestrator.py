@@ -74,6 +74,7 @@ class Orchestrator:
                 "static_analysis_present": "static_analysis" in state.context,
                 "dynamic_analysis_present": "dynamic_analysis" in state.context,
                 "virustotal_present": "virustotal" in state.context,
+                "otx_present": "otx_enrichment" in state.context,
                 "groq_analysis_present": "groq_analysis" in state.context,
                 "pfsense_block_present": "pfsense_block" in state.context,
             }
@@ -145,7 +146,14 @@ Shared Memory / Context:
                     tool_result = await static_analysis.execute(state.context)
                 elif tool == "virustotal":
                     from services import virustotal_service
-                    tool_result = await virustotal_service.execute(state.context)
+                    from services import otx_service
+                    vt_res = await virustotal_service.execute(state.context)
+                    otx_res = await otx_service.execute(state.context)
+                    tool_result = {}
+                    if vt_res:
+                        tool_result.update(vt_res)
+                    if otx_res:
+                        tool_result.update(otx_res)
                 elif tool == "dynamic_sandbox":
                     from services import dynamic_sandbox
                     tool_result = await dynamic_sandbox.execute(state.context)

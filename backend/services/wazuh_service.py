@@ -8,8 +8,10 @@ from datetime import datetime, timedelta
 from typing import List, Dict
 from urllib3.exceptions import InsecureRequestWarning
 import warnings
+import logging
 
 warnings.filterwarnings("ignore", category=InsecureRequestWarning)
+logger = logging.getLogger("wazuh-service")
 
 # Wazuh runs on host (not in Docker). From container, reach it via:
 # - 172.17.0.1 = Docker bridge gateway on Linux
@@ -70,17 +72,34 @@ async def correlate_iocs(iocs: Dict) -> List[Dict]:
     async with aiohttp.ClientSession() as session:
         for ip in iocs.get("ips", []):
             url = f"{WAZUH_URL}/alerts?q=data.srcip:{ip}"
-            async with session.get(url, headers=headers, ssl=False) as response:
-                if response.status == 200:
-                    data = await response.json()
-                    alerts.extend(data.get("data", {}).get("alerts", []))
+            try:
+                async with session.get(url, headers=headers, ssl=False) as response:
+                    if response.status == 200:
+                        data = await response.json()
+                        alerts.extend(data.get("data", {}).get("alerts", []))
+            except Exception as e:
+                logger.error(f"Wazuh IP correlation error: {e}")
 
         for domain in iocs.get("domains", []):
-            url = f"{WAZUH_URL}/alerts?q=data.srcip:{domain}"
-            async with session.get(url, headers=headers, ssl=False) as response:
-                if response.status == 200:
-                    data = await response.json()
-                    alerts.extend(data.get("data", {}).get("alerts", []))
+            url = f"{WAZUH_URL}/alerts?q=data.domain:{domain}"
+            try:
+                async with session.get(url, headers=headers, ssl=False) as response:
+                    if response.status == 200:
+                        data = await response.json()
+                        alerts.extend(data.get("data", {}).get("alerts", []))
+            except Exception as e:
+                logger.error(f"Wazuh Domain correlation error: {e}")
+
+        for hash_val in iocs.get("hashes", []):
+            q_field = "data.md5" if len(hash_val) == 32 else "data.sha256"
+            url = f"{WAZUH_URL}/alerts?q={q_field}:{hash_val}"
+            try:
+                async with session.get(url, headers=headers, ssl=False) as response:
+                    if response.status == 200:
+                        data = await response.json()
+                        alerts.extend(data.get("data", {}).get("alerts", []))
+            except Exception as e:
+                logger.error(f"Wazuh Hash correlation error: {e}")
 
     return alerts
 

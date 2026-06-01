@@ -1,7 +1,7 @@
 <ossec_config>
   <!-- Integration to send alerts to AutoShield Middleware -->
   <integration>
-    <name>autoshield-middleware</name>
+    <name>slack</name>
     <hook_url>http://165.232.174.172:8000/webhook</hook_url>
     <alert_format>json</alert_format>
     <level>7</level> <!-- Send alerts with level 7 or higher -->
