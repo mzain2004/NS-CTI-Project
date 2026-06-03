@@ -133,6 +133,267 @@ async def analyze_file(
         raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
 
 
+SEEDED_SHA256S = {
+    "a3f1e2d4b5c6789012345678901234567890abcdef1234567890abcdef123456",
+    "b4c2f3e5a6d7890123456789012345678901bcdef2345678901bcdef234567",
+    "c5d3g4f6b7e8901234567890123456789012cdef3456789012cdef3456789"
+}
+
+def get_seeded_analyses():
+    # Attempt to load from disk first (written by the seed script)
+    seeded_list = []
+    for sha in SEEDED_SHA256S:
+        p = SAMPLES_PATH / sha / 'result.json'
+        if p.exists():
+            try:
+                with p.open('r') as f:
+                    seeded_list.append(AnalysisResult.model_validate(json.load(f)))
+            except Exception:
+                pass
+    if len(seeded_list) == 3:
+        return seeded_list
+
+    # Fallback to hardcoded ones if not seeded on disk yet
+    from datetime import datetime, timedelta, timezone
+    now = datetime.now(timezone.utc)
+    
+    return [
+        AnalysisResult(
+            analysis_id="a3f1e2d4b5c6789012345678901234567890abcdef1234567890abcdef123456",
+            status="complete",
+            created_at=(now - timedelta(hours=2)).isoformat(),
+            file_name="mirai_sample.elf",
+            static_analysis={
+                "file_name": "mirai_sample.elf",
+                "file_size": 124928,
+                "file_type": "ELF",
+                "md5": "a3f1e2d4b5c678901234567890123456",
+                "sha1": "a3f1e2d4b5c6789012345678901234567890abcd",
+                "sha256": "a3f1e2d4b5c6789012345678901234567890abcdef1234567890abcdef123456",
+                "pe_sections": [],
+                "imports": [],
+                "strings_extracted": ["whoami", "uname -a", "cat /etc/passwd", "mirai.sh"],
+                "yara_hits": [],
+                "is_packed": False,
+                "compile_timestamp": None,
+                "entry_point": "0x400080"
+            },
+            groq_analysis={
+                "malware_family": "Mirai",
+                "confidence": 95,
+                "behavior_summary": "ELF binary identified as Mirai variant. Contains hardcoded C2 IPs, brute force module targeting Telnet/SSH, DDoS capability.",
+                "mitre_techniques": [
+                    {
+                        "technique_id": "T1059.004",
+                        "technique_name": "Unix Shell",
+                        "tactic": "Execution",
+                        "description": "Execution of commands in Unix shell.",
+                        "confidence": 95
+                    },
+                    {
+                        "technique_id": "T1071.001",
+                        "technique_name": "Web Protocols",
+                        "tactic": "Command and Control",
+                        "description": "Use of HTTP for C2 communication.",
+                        "confidence": 90
+                    },
+                    {
+                        "technique_id": "T1498",
+                        "technique_name": "Network Denial of Service",
+                        "tactic": "Impact",
+                        "description": "DDoS capability detected.",
+                        "confidence": 85
+                    }
+                ],
+                "iocs": {
+                    "ips": ["185.220.101.45"],
+                    "domains": [],
+                    "urls": ["http://185.220.101.45/mirai.sh"],
+                    "hashes": ["a3f1e2d4b5c6789012345678901234567890abcdef1234567890abcdef123456"],
+                    "registry_keys": [],
+                    "file_paths": [],
+                    "mutexes": []
+                },
+                "risk_level": "HIGH",
+                "recommended_actions": ["Isolate infected host", "Block C2 IP 185.220.101.45"],
+                "analyst_notes": "Mirai botnet sample",
+                "raw_response": ""
+            },
+            virustotal={
+                "detection_ratio": "45/72",
+                "detections": 45,
+                "total_engines": 72,
+                "malicious": 45,
+                "suspicious": 0,
+                "undetected": 27,
+                "engine_hits": [],
+                "first_seen": "2026-06-01T00:00:00Z",
+                "last_seen": "2026-06-03T00:00:00Z",
+                "community_score": 45,
+                "vt_link": "https://www.virustotal.com/gui/file/a3f1e2d4b5c6789012345678901234567890abcdef1234567890abcdef123456",
+                "family_names": ["Mirai"]
+            },
+            error=None
+        ),
+        AnalysisResult(
+            analysis_id="b4c2f3e5a6d7890123456789012345678901bcdef2345678901bcdef234567",
+            status="complete",
+            created_at=(now - timedelta(hours=6)).isoformat(),
+            file_name="reverse_shell.sh",
+            static_analysis={
+                "file_name": "reverse_shell.sh",
+                "file_size": 256,
+                "file_type": "Shell Script",
+                "md5": "b4c2f3e5a6d78901234567890123456",
+                "sha1": "b4c2f3e5a6d789012345678901234567890abcd",
+                "sha256": "b4c2f3e5a6d7890123456789012345678901bcdef2345678901bcdef234567",
+                "pe_sections": [],
+                "imports": [],
+                "strings_extracted": ["/bin/bash", "tcp", "sh"],
+                "yara_hits": [],
+                "is_packed": False,
+                "compile_timestamp": None,
+                "entry_point": ""
+            },
+            groq_analysis={
+                "malware_family": "Reverse Shell",
+                "confidence": 90,
+                "behavior_summary": "Bash script implementing a reverse shell connection.",
+                "mitre_techniques": [
+                    {
+                        "technique_id": "T1059.004",
+                        "technique_name": "Unix Shell",
+                        "tactic": "Execution",
+                        "description": "Executes bash commands.",
+                        "confidence": 95
+                    },
+                    {
+                        "technique_id": "T1095",
+                        "technique_name": "Non-Application Layer Protocol",
+                        "tactic": "Command and Control",
+                        "description": "Establishes raw TCP connection for reverse shell.",
+                        "confidence": 90
+                    }
+                ],
+                "iocs": {
+                    "ips": ["91.108.4.177"],
+                    "domains": [],
+                    "urls": ["http://91.108.4.177/payload.elf"],
+                    "hashes": ["b4c2f3e5a6d7890123456789012345678901bcdef2345678901bcdef234567"],
+                    "registry_keys": [],
+                    "file_paths": [],
+                    "mutexes": []
+                },
+                "risk_level": "HIGH",
+                "recommended_actions": ["Block egress traffic to 91.108.4.177", "Terminate active shell processes"],
+                "analyst_notes": "Bash reverse shell script",
+                "raw_response": ""
+            },
+            virustotal={
+                "detection_ratio": "15/60",
+                "detections": 15,
+                "total_engines": 60,
+                "malicious": 15,
+                "suspicious": 0,
+                "undetected": 45,
+                "engine_hits": [],
+                "first_seen": "2026-06-02T00:00:00Z",
+                "last_seen": "2026-06-03T00:00:00Z",
+                "community_score": 15,
+                "vt_link": "https://www.virustotal.com/gui/file/b4c2f3e5a6d7890123456789012345678901bcdef2345678901bcdef234567",
+                "family_names": ["Shellscript"]
+            },
+            error=None
+        ),
+        AnalysisResult(
+            analysis_id="c5d3g4f6b7e8901234567890123456789012cdef3456789012cdef3456789",
+            status="complete",
+            created_at=(now - timedelta(hours=12)).isoformat(),
+            file_name="cryptominer.elf",
+            static_analysis={
+                "file_name": "cryptominer.elf",
+                "file_size": 2048576,
+                "file_type": "ELF",
+                "md5": "c5d3g4f6b7e890123456789012345678",
+                "sha1": "c5d3g4f6b7e89012345678901234567890abcd",
+                "sha256": "c5d3g4f6b7e8901234567890123456789012cdef3456789012cdef3456789",
+                "pe_sections": [],
+                "imports": [],
+                "strings_extracted": ["xmrig", "pool.supportxmr.com"],
+                "yara_hits": [],
+                "is_packed": False,
+                "compile_timestamp": None,
+                "entry_point": "0x401000"
+            },
+            groq_analysis={
+                "malware_family": "XMRig Miner",
+                "confidence": 85,
+                "behavior_summary": "ELF binary identified as XMRig miner. Utilizes system resources for cryptocurrency mining.",
+                "mitre_techniques": [
+                    {
+                        "technique_id": "T1496",
+                        "technique_name": "Resource Hijacking",
+                        "tactic": "Impact",
+                        "description": "Cryptocurrency mining activity.",
+                        "confidence": 90
+                    }
+                ],
+                "iocs": {
+                    "ips": [],
+                    "domains": [],
+                    "urls": [],
+                    "hashes": ["c5d3g4f6b7e8901234567890123456789012cdef3456789012cdef3456789"],
+                    "registry_keys": [],
+                    "file_paths": ["/tmp/xmrig"],
+                    "mutexes": []
+                },
+                "risk_level": "LOW",
+                "recommended_actions": ["Kill xmrig processes", "Remove binary from /tmp/xmrig"],
+                "analyst_notes": "XMRig Miner",
+                "raw_response": ""
+            },
+            virustotal={
+                "detection_ratio": "8/68",
+                "detections": 8,
+                "total_engines": 68,
+                "malicious": 8,
+                "suspicious": 0,
+                "undetected": 60,
+                "engine_hits": [],
+                "first_seen": "2026-05-30T00:00:00Z",
+                "last_seen": "2026-06-03T00:00:00Z",
+                "community_score": 8,
+                "vt_link": "https://www.virustotal.com/gui/file/c5d3g4f6b7e8901234567890123456789012cdef3456789012cdef3456789",
+                "family_names": ["XMRig"]
+            },
+            error=None
+        )
+    ]
+
+
+@router.get('/analyze/list', response_model=list[AnalysisResult])
+async def list_analyses() -> list[AnalysisResult]:
+    try:
+        analyses = []
+        if SAMPLES_PATH.exists():
+            for sample_dir in SAMPLES_PATH.iterdir():
+                if sample_dir.is_dir():
+                    result_path = sample_dir / 'result.json'
+                    if result_path.exists():
+                        with result_path.open('r') as f:
+                            data = json.load(f)
+                            analyses.append(AnalysisResult.model_validate(data))
+        
+        # Determine real analyses (not in seeded set)
+        real_analyses = [a for a in analyses if a.analysis_id not in SEEDED_SHA256S]
+        if real_analyses:
+            return sorted(real_analyses, key=lambda x: x.created_at, reverse=True)
+        else:
+            return sorted(get_seeded_analyses(), key=lambda x: x.created_at, reverse=True)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to list analyses: {str(e)}")
+
+
 @router.get('/analyze/{analysis_id}', response_model=AnalysisResult)
 async def get_analysis(analysis_id: str) -> AnalysisResult:
     try:
@@ -153,25 +414,13 @@ async def get_analysis(analysis_id: str) -> AnalysisResult:
                             data = json.load(f)
                             return AnalysisResult.model_validate(data)
 
+        # Fallback for seeded analyses if not on disk yet
+        for seeded in get_seeded_analyses():
+            if seeded.analysis_id.startswith(analysis_id):
+                return seeded
+
         raise HTTPException(status_code=404, detail="Analysis not found")
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch analysis: {str(e)}")
-
-
-@router.get('/analyze/list', response_model=list[AnalysisResult])
-async def list_analyses() -> list[AnalysisResult]:
-    try:
-        analyses = []
-        if SAMPLES_PATH.exists():
-            for sample_dir in SAMPLES_PATH.iterdir():
-                if sample_dir.is_dir():
-                    result_path = sample_dir / 'result.json'
-                    if result_path.exists():
-                        with result_path.open('r') as f:
-                            data = json.load(f)
-                            analyses.append(AnalysisResult.model_validate(data))
-        return sorted(analyses, key=lambda x: x.created_at, reverse=True)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to list analyses: {str(e)}")

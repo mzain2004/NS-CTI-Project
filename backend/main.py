@@ -11,7 +11,7 @@ import urllib3
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from routers import analyze, virustotal, cowrie, wazuh, pfsense, reports
+from routers import analyze, virustotal, cowrie, wazuh, pfsense, reports, demo
 
 # Suppress SSL warnings for Wazuh self-signed cert
 urllib3.disable_warnings(InsecureRequestWarning)
@@ -44,6 +44,7 @@ app.include_router(cowrie.router,      prefix="/api")
 app.include_router(wazuh.router,       prefix="/api")
 app.include_router(pfsense.router,     prefix="/api")
 app.include_router(reports.router,     prefix="/api")
+app.include_router(demo.router,        prefix="/api")
 
 # ── Active-Defense Webhook ──────────────────────────────────────────────
 import httpx

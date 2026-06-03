@@ -10,7 +10,7 @@ from jinja2 import Template
 try:
     from weasyprint import HTML
     WEASYPRINT_AVAILABLE = True
-except ImportError:
+except Exception:
     HTML = None
     WEASYPRINT_AVAILABLE = False
 
