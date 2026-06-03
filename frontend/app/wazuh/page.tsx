@@ -4,7 +4,8 @@ import { getWazuhAlerts } from '@/lib/api'
 export default async function WazuhPage() {
   let alerts: Awaited<ReturnType<typeof getWazuhAlerts>> = []
   try {
-    alerts = await getWazuhAlerts()
+    const payload = await getWazuhAlerts()
+    alerts = Array.isArray(payload) ? payload : []
   } catch {
     // API unavailable at build/request time — render empty state
   }

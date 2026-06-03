@@ -5,6 +5,8 @@ interface AlertTableProps {
 }
 
 export default function AlertTable({ alerts }: AlertTableProps) {
+  const safeAlerts = Array.isArray(alerts) ? alerts : []
+
   return (
     <section className="panel p-4">
       <h3 className="font-semibold">Wazuh Alerts</h3>
@@ -17,11 +19,11 @@ export default function AlertTable({ alerts }: AlertTableProps) {
           </tr>
         </thead>
         <tbody>
-          {alerts.map((alert) => (
-            <tr key={alert.alert_id}>
-              <td className="py-2">{alert.rule_description}</td>
-              <td className="py-2">{alert.severity}</td>
-              <td className="py-2">{alert.agent_name}</td>
+          {safeAlerts.map((alert, index) => (
+            <tr key={alert.alert_id ?? `alert-${index}`}>
+              <td className="py-2">{alert.rule_description ?? 'Unknown rule'}</td>
+              <td className="py-2">{alert.severity ?? 'unknown'}</td>
+              <td className="py-2">{alert.agent_name ?? 'Unknown agent'}</td>
             </tr>
           ))}
         </tbody>

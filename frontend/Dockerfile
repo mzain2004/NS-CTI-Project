@@ -9,7 +9,7 @@ RUN npm install --legacy-peer-deps
 COPY frontend/ ./
 
 # Build arg so API URL is baked in at build time
-ARG NEXT_PUBLIC_API_URL=http://165.232.174.172:8000
+ARG NEXT_PUBLIC_API_URL=http://167.172.85.62:8000
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 
 RUN npm run build

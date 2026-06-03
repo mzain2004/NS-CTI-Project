@@ -1,21 +1,20 @@
 "use client"
 import { useEffect, useState } from 'react';
-import ExportButtons from '@/components/reports/ExportButtons';
 import ReportCard from '@/components/reports/ReportCard';
-import type { ReportMetadata } from '@shared/types';
-import { API_URL } from '@/lib/api'
+import type { ReportListItem } from '@/lib/api';
+import { generateReport, listReports } from '@/lib/api'
 
 export default function ReportsPage() {
-  const [reports, setReports] = useState<ReportMetadata[]>([]);
+  const [reports, setReports] = useState<ReportListItem[]>([]);
 
   useEffect(() => {
     const fetchReports = async () => {
       try {
-        const response = await fetch(`${API_URL}/api/report/list`);
-        const data = await response.json();
-        setReports(data);
+        const data = await listReports();
+        setReports(Array.isArray(data) ? data : []);
       } catch (error) {
         console.error('Failed to fetch reports:', error);
+        setReports([]);
       }
     };
 
@@ -26,14 +25,11 @@ export default function ReportsPage() {
 
   const handleGenerateReport = async (analysisId: string) => {
     try {
-      const response = await fetch(`${API_URL}/api/report/generate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ analysis_id: analysisId }),
-      });
-
-      if (response.ok) {
+      const result = await generateReport(analysisId, 'SOC-A');
+      if (result.report_id) {
         alert('Report generation started successfully!');
+        const refreshed = await listReports();
+        setReports(Array.isArray(refreshed) ? refreshed : []);
       } else {
         alert('Failed to start report generation.');
       }

@@ -14,7 +14,7 @@ export default function ExportButtons({ analysisId }: ExportButtonsProps) {
 
   async function handleGenerate() {
     const response = await generateReport(analysisId, 'SOC-A')
-    setMessage(`Generated ${response.exports.length} export(s)`) 
+    setMessage(response.report_id ? `Generated report ${response.report_id}` : 'Report generation failed')
   }
 
   return (

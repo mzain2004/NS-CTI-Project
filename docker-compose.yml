@@ -31,7 +31,7 @@ services:
       context: .
       dockerfile: frontend/Dockerfile
       args:
-        NEXT_PUBLIC_API_URL: http://165.232.174.172:8000
+        NEXT_PUBLIC_API_URL: http://167.172.85.62:8000
     container_name: nscti-frontend
     expose:
       - "3000"

@@ -8,7 +8,7 @@ const display = Space_Grotesk({ subsets: ['latin'], variable: '--font-display' }
 const mono = JetBrains_Mono({ subsets: ['latin'], variable: '--font-mono' })
 
 export const metadata: Metadata = {
-  title: 'NS-CTI Platform',
+  title: 'AutoShield',
   description: 'Malware Analysis & Threat Intelligence Platform',
 }
 

@@ -7,7 +7,9 @@ export default async function CowriePage() {
   let sessions: CowrieSession[] = []
   let samples: CowrieSample[] = []
   try {
-    ;[sessions, samples] = await Promise.all([getCowrieLogs(), getCowrieSamples()])
+    const [sessionsPayload, samplesPayload] = await Promise.all([getCowrieLogs(), getCowrieSamples()])
+    sessions = Array.isArray(sessionsPayload) ? sessionsPayload : []
+    samples = Array.isArray(samplesPayload) ? samplesPayload : []
   } catch {
     // API unavailable at build/request time — render empty state
   }

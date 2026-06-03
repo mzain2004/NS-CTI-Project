@@ -126,8 +126,12 @@ export default function DashboardPage() {
           fetch(`${API_URL}/api/wazuh/stats`),
         ]);
 
+        if (!analysesResponse.ok) {
+          throw new Error(`Failed to fetch analyses: ${analysesResponse.status}`);
+        }
+
         const analysesData = (await analysesResponse.json()) as DashboardAnalysis[];
-        const wazuhData = await wazuhResponse.json();
+        const wazuhData = wazuhResponse.ok ? await wazuhResponse.json() : { total_alerts: 0 };
 
         setStats({
           ...computeDashboardStats(Array.isArray(analysesData) ? analysesData : []),
@@ -136,7 +140,15 @@ export default function DashboardPage() {
         setRiskDistribution(buildRiskDistribution(Array.isArray(analysesData) ? analysesData : []));
         setRecentAnalyses(buildRecentAnalyses(Array.isArray(analysesData) ? analysesData : []));
       } catch {
-        // API unavailable — silently degrade
+        // API unavailable — degrade with explicit empty dashboard state
+        setStats({
+          filesAnalyzed: 0,
+          threatsDetected: 0,
+          iocsExtracted: 0,
+          wazuhAlerts: 0,
+        });
+        setRiskDistribution([]);
+        setRecentAnalyses([]);
       }
     };
 

@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import { LayoutDashboard, Upload, Bug, Shield, Network, FileText } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { API_URL } from '@/lib/api'
+import { getApiHealth } from '@/lib/api'
 
 const navItems = [
   { name: 'Dashboard', icon: LayoutDashboard, href: '/' },
@@ -18,18 +18,20 @@ export default function Sidebar() {
   useEffect(() => {
     const checkApiStatus = async () => {
       try {
-        const response = await fetch(`${API_URL}/api/health`);
-        setApiStatus(response.ok ? 'Online' : 'Offline');
+        const health = await getApiHealth();
+        setApiStatus(health.status === 'ok' ? 'Online' : 'Offline');
       } catch {
         setApiStatus('Offline');
       }
     };
     checkApiStatus();
+    const interval = setInterval(checkApiStatus, 30000);
+    return () => clearInterval(interval);
   }, []);
   return (
     <aside className="fixed top-0 left-0 h-full w-60 bg-[#111827] text-[#f9fafb] flex flex-col">
       <div className="flex items-center justify-center h-16 border-b border-[#374151]">
-        <span className="text-xl font-bold">NS-CTI</span>
+        <span className="text-xl font-bold">AutoShield</span>
       </div>
       <nav className="flex-1 overflow-y-auto">
         <ul className="space-y-2 p-4">

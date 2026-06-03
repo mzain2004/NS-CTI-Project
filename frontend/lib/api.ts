@@ -4,13 +4,33 @@ import type {
   BlockResponse,
   CowrieSample,
   CowrieSession,
-  ReportExport,
-  ReportMetadata,
   VirusTotalResult,
   WazuhAlert,
 } from '@shared/types'
 
-export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://165.232.174.172:8000'
+const DEFAULT_API_URL = 'http://167.172.85.62:8000'
+
+export const API_URL = (process.env.NEXT_PUBLIC_API_URL ?? DEFAULT_API_URL).replace(/\/$/, '')
+
+export interface ApiHealth {
+  status?: string
+}
+
+export interface ReportListItem {
+  report_id: string
+  file_name?: string
+  sha256?: string
+  pdf_url?: string
+  json_url?: string
+  ioc_url?: string
+}
+
+export interface ReportGenerateResult {
+  report_id: string
+  pdf_url?: string
+  json_url?: string
+  ioc_url?: string
+}
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_URL}${path}`, {
@@ -62,6 +82,15 @@ export function getWazuhAlerts(): Promise<WazuhAlert[]> {
   return request<WazuhAlert[]>('/api/wazuh/alerts')
 }
 
+export function getApiHealth(): Promise<ApiHealth> {
+  return request<ApiHealth>('/api/health')
+}
+
+export async function listReports(): Promise<ReportListItem[]> {
+  const payload = await request<unknown>('/api/report/list')
+  return Array.isArray(payload) ? (payload as ReportListItem[]) : []
+}
+
 export function getVirusTotal(hash: string): Promise<VirusTotalResult> {
   return request<VirusTotalResult>(`/api/virustotal/${hash}`)
 }
@@ -73,8 +102,8 @@ export function blockPfSense(payload: BlockRequest): Promise<BlockResponse> {
   })
 }
 
-export function generateReport(analysisId: string, analyst: string): Promise<{ metadata: ReportMetadata; exports: ReportExport[] }> {
-  return request<{ metadata: ReportMetadata; exports: ReportExport[] }>('/api/report/generate', {
+export function generateReport(analysisId: string, analyst: string): Promise<ReportGenerateResult> {
+  return request<ReportGenerateResult>('/api/report/generate', {
     method: 'POST',
     body: JSON.stringify({ analysis_id: analysisId, analyst, formats: ['pdf', 'json', 'ioc_txt'] }),
   })
