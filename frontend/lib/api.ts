@@ -8,7 +8,7 @@ import type {
   WazuhAlert,
 } from '@shared/types'
 
-export const API_URL = 'http://167.172.85.62:8000'
+export const API_URL = ''
 
 export interface ApiHealth {
   status?: string

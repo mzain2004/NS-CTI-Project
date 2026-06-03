@@ -18,7 +18,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       <body className={`${display.variable} ${mono.variable} antialiased`}>
         <div className="app-shell">
           <Sidebar />
-          <div className="app-main">
+          <div className="app-main ml-60">
             <TopBar />
             <main className="page-container">{children}</main>
           </div>
